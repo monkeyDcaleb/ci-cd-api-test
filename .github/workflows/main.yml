@@ -1,0 +1,39 @@
+name: API CI
+
+on:
+  push:
+  pull_request:
+
+jobs:
+  test-api:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+
+      - name: Install dependencies
+        run: npm install
+
+      - name: Start API
+        run: |
+          node index.js > server.log 2>&1 &
+          for i in {1..30}; do
+            if curl --fail http://localhost:10000/; then
+              break
+            fi
+            sleep 1
+          done
+
+      - name: Run Newman API tests
+        run: npx --yes newman run postman-test.json --bail
+
+      - name: Show server log if tests fail
+        if: failure()
+        run: cat server.log
